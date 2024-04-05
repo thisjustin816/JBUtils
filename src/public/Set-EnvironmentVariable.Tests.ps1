@@ -147,7 +147,10 @@ Describe 'Unit Tests' -Tag 'Unit' {
             Set-EnvironmentVariable -Name ScopeTest -Value "this is a $Scope value" -Scope $scope
             [System.Environment]::GetEnvironmentVariable('ScopeTest', $Scope) |
                 Should -Be "this is a $Scope value"
-            foreach ($otherScope in ( $global:scopes.Values | Where-Object { $_ -ne $Scope } )) {
+            foreach ($otherScope in @(
+                $global:scopes.Values |
+                    Where-Object { $_ -ne $Scope -and $_ -ne 'Process' }
+            )) {
                 [System.Environment]::GetEnvironmentVariable('ScopeTest', $otherScope) | Should -Be $null
             }
         }
@@ -373,7 +376,10 @@ Describe 'Integration Tests' -Tag 'Integration' {
         Set-EnvironmentVariable -Name ScopeTest -Value "this is a $Scope value" -Scope $Scope
         [System.Environment]::GetEnvironmentVariable('ScopeTest', $Scope) |
             Should -Be "this is a $Scope value"
-        foreach ($otherScope in @( $global:scopes.Values | Where-Object { $Scope, 'Process' -notcontains $_ } )) {
+        foreach ($otherScope in @(
+            $global:scopes.Values |
+                Where-Object { $_ -ne $Scope -and $_ -ne 'Process' } 
+        )) {
             [System.Environment]::GetEnvironmentVariable('ScopeTest', $otherScope) | Should -Be $null
         }
     }

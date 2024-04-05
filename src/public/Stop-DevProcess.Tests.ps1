@@ -13,6 +13,7 @@
         . $PSScriptRoot/Stop-ProcessTree.ps1
         . $PSScriptRoot/Stop-DevProcess.ps1
         . $PSScriptRoot/Test-PSEnvironment.ps1
+        . $PSScriptRoot/Get-PSVersion.ps1
 
         <#
         .SYNOPSIS
