@@ -2,19 +2,14 @@
 [CmdletBinding()]
 param()
 Describe 'Unit Tests' -Tag 'Unit' {
-    BeforeDiscovery {
+    BeforeAll {
+        $script:isAdmin = $true
         try {
-            Test-PSEnvironment -ErrorAction Stop
-            $script:isAdmin = $true
-            Write-Host -Object "##[info] Running as admin"
+            Test-PSEnvironment -ErrorAction SilentlyContinue
         }
         catch {
             $script:isAdmin = $false
-            Write-Host -Object "##[info] Running as non-admin"
         }
-    }
-
-    BeforeAll {
         Write-Host -Object "##[info] Running tests as admin: $($script:isAdmin)"
 
         . $PSScriptRoot/Get-PSVersion.ps1
@@ -119,14 +114,6 @@ Describe 'Unit Tests' -Tag 'Unit' {
 
     Context 'scope handling' {
         BeforeDiscovery {
-            try {
-                Test-PSEnvironment -ErrorAction SilentlyContinue
-                $script:isAdmin = $true
-            }
-            catch {
-                $script:isAdmin = $false
-            }
-
             $global:scopes = @(
                 @{ Scope = 'Process' }
                 @{ Scope = 'User' }
@@ -290,6 +277,8 @@ Describe 'Integration Tests' -Tag 'Integration' {
 
 
     BeforeAll {
+        Write-Host -Object "##[info] Running tests as admin: $($script:isAdmin)"
+
         . $PSScriptRoot/Get-PSVersion.ps1
         . $PSScriptRoot/Get-EnvironmentVariable.ps1
         . $PSScriptRoot/Test-PSEnvironment.ps1
