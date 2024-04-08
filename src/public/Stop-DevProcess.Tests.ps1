@@ -1,17 +1,12 @@
 ﻿Describe 'Integration Tests' -Skip:(!$script:isAdmin) {
     BeforeDiscovery {
-        $script:isAdmin = try {
-            Test-PSEnvironment
-            $true
-        }
-        catch {
-            $false
-        }
+        $script:isAdmin = Test-IsAdmin
     }
 
     BeforeAll {
         . $PSScriptRoot/Stop-ProcessTree.ps1
         . $PSScriptRoot/Stop-DevProcess.ps1
+        . $PSScriptRoot/Test-IsAdmin.ps1
         . $PSScriptRoot/Test-PSEnvironment.ps1
         . $PSScriptRoot/Get-PSVersion.ps1
 

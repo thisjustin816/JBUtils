@@ -3,19 +3,14 @@
 param()
 Describe 'Unit Tests' -Tag 'Unit' {
     BeforeAll {
-        $script:isAdmin = $true
-        try {
-            Test-PSEnvironment -ErrorAction SilentlyContinue
-        }
-        catch {
-            $script:isAdmin = $false
-        }
-        Write-Host -Object "##[info] Running tests as admin: $($script:isAdmin)"
-
         . $PSScriptRoot/Get-PSVersion.ps1
         . $PSScriptRoot/Get-EnvironmentVariable.ps1
+        . $PSScriptRoot/Test-IsAdmin.ps1
         . $PSScriptRoot/Test-PSEnvironment.ps1
         . $PSScriptRoot/Set-EnvironmentVariable.ps1
+
+        $script:isAdmin = Test-IsAdmin
+        Write-Host -Object "##[info] Running tests as admin: $($script:isAdmin)"
 
         <#
         .SYNOPSIS
@@ -258,13 +253,7 @@ Describe 'Unit Tests' -Tag 'Unit' {
 
 Describe 'Integration Tests' -Tag 'Integration' {
     BeforeDiscovery {
-        try {
-            Test-PSEnvironment -ErrorAction SilentlyContinue
-            $script:isAdmin = $true
-        }
-        catch {
-            $script:isAdmin = $false
-        }
+        $script:isAdmin = Test-IsAdmin
 
         $script:allScopes = @(
             @{ Scope = 'Process' },
@@ -280,6 +269,7 @@ Describe 'Integration Tests' -Tag 'Integration' {
         Write-Host -Object "##[info] Running tests as admin: $($script:isAdmin)"
 
         . $PSScriptRoot/Get-PSVersion.ps1
+        . $PSScriptRoot/Test-IsAdmin.ps1
         . $PSScriptRoot/Get-EnvironmentVariable.ps1
         . $PSScriptRoot/Test-PSEnvironment.ps1
         . $PSScriptRoot/Set-EnvironmentVariable.ps1
