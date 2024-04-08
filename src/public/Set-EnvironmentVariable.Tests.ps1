@@ -6,11 +6,11 @@ Describe 'Unit Tests' -Tag 'Unit' {
         try {
             Test-PSEnvironment -ErrorAction Stop
             $script:isAdmin = $true
-            Write-Object -Object "##[info] Running as admin"
+            Write-Host -Object "##[info] Running as admin"
         }
         catch {
             $script:isAdmin = $false
-            Write-Object -Object "##[info] Running as non-admin"
+            Write-Host -Object "##[info] Running as non-admin"
         }
     }
 
