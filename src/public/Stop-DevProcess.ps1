@@ -36,7 +36,7 @@ function Stop-DevProcess {
         '*chromedriver'
     )
 
-    Test-PSEnvironment
+    Test-PSEnvironment -CheckAdmin -Exit
     foreach ($processName in $Optional) {
         $processes = @( Get-Process -Name $processName -ErrorAction SilentlyContinue )
         foreach ($process in $processes) {

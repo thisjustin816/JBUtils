@@ -1,16 +1,11 @@
 ﻿Describe 'Integration Tests' -Tag 'Integration' -Skip:(!$script:isAdmin) {
     BeforeDiscovery {
-        $script:isAdmin = try {
-            Test-PSEnvironment
-            $true
-        }
-        catch {
-            $false
-        }
+        $script:isAdmin = Test-IsAdmin
     }
 
     BeforeAll {
         . $PSScriptRoot/Get-PSVersion.ps1
+        . $PSScriptRoot/Test-IsAdmin.ps1
         . $PSScriptRoot/Test-PSEnvironment.ps1
         . $PSScriptRoot/Uninstall-ProgramByName.ps1
 

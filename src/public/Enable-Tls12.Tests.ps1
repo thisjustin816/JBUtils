@@ -1,17 +1,12 @@
 ﻿Describe 'Unit/Integration Tests' {
     BeforeAll {
         . $PSScriptRoot/Enable-Tls12.ps1
+        . $PSScriptRoot/Test-IsAdmin.ps1
         . $PSScriptRoot/Test-PSEnvironment.ps1
         . $PSScriptRoot/Start-Timeout
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::SystemDefault
 
-        try {
-            Test-PSEnvironment -CheckAdmin $true
-            $script:isAdmin = $true
-        }
-        catch {
-            $script:isAdmin = $false
-        }
+        $script:isAdmin = Test-IsAdmin
     }
 
     It 'should change TLS of the current session to 1.2' {
@@ -21,7 +16,7 @@
 
     Context 'When running in a non-admin console' {
         BeforeAll {
-            Mock Test-PSEnvironment { throw }
+            Mock Test-IsAdmin { $false }
             Mock Start-Process
         }
 
