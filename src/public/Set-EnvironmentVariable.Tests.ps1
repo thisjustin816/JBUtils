@@ -6,9 +6,11 @@ Describe 'Unit Tests' -Tag 'Unit' {
         try {
             Test-PSEnvironment -ErrorAction Stop
             $script:isAdmin = $true
+            Write-Object -Object "##[info] Running as admin"
         }
         catch {
             $script:isAdmin = $false
+            Write-Object -Object "##[info] Running as non-admin"
         }
     }
 
@@ -27,7 +29,7 @@ Describe 'Unit Tests' -Tag 'Unit' {
         function Clear-TestEnvVar {
             foreach ($var in ('PesterEnvVar', 'ScopeTest')) {
                 foreach ($scope in 'Machine', 'User', 'Process') {
-                    if ($scope -ne 'Machine' -or $script:isAdmin) {
+                    if ($script:isAdmin -or $scope -ne 'Machine') {
                         Write-Host -Object "##[info] Clearing ENV var $var at scope $scope..."
                         [System.Environment]::SetEnvironmentVariable($var, $null, $scope)
                     }
@@ -300,7 +302,7 @@ Describe 'Integration Tests' -Tag 'Integration' {
         function Clear-TestEnvVar {
             foreach ($var in ('PesterEnvVar', 'ScopeTest')) {
                 foreach ($scope in 'Machine', 'User', 'Process') {
-                    if ($scope -ne 'Machine' -or $script:isAdmin) {
+                    if ($script:isAdmin -or $scope -ne 'Machine') {
                         Write-Host -Object "##[info] Clearing ENV var $var at scope $scope..."
                         [System.Environment]::SetEnvironmentVariable($var, $null, $scope)
                     }
