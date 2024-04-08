@@ -4,7 +4,7 @@ param()
 Describe 'Unit Tests' -Tag 'Unit' {
     BeforeDiscovery {
         try {
-            Test-PSEnvironment -ErrorAction SilentlyContinue
+            Test-PSEnvironment -ErrorAction Stop
             $script:isAdmin = $true
         }
         catch {
@@ -13,6 +13,8 @@ Describe 'Unit Tests' -Tag 'Unit' {
     }
 
     BeforeAll {
+        Write-Host -Object "##[info] Running tests as admin: $($script:isAdmin)"
+
         . $PSScriptRoot/Get-PSVersion.ps1
         . $PSScriptRoot/Get-EnvironmentVariable.ps1
         . $PSScriptRoot/Test-PSEnvironment.ps1
@@ -26,6 +28,7 @@ Describe 'Unit Tests' -Tag 'Unit' {
             foreach ($var in ('PesterEnvVar', 'ScopeTest')) {
                 foreach ($scope in 'Machine', 'User', 'Process') {
                     if ($scope -ne 'Machine' -or $script:isAdmin) {
+                        Write-Host -Object "##[info] Clearing ENV var $var at scope $scope..."
                         [System.Environment]::SetEnvironmentVariable($var, $null, $scope)
                     }
                 }
@@ -298,6 +301,7 @@ Describe 'Integration Tests' -Tag 'Integration' {
             foreach ($var in ('PesterEnvVar', 'ScopeTest')) {
                 foreach ($scope in 'Machine', 'User', 'Process') {
                     if ($scope -ne 'Machine' -or $script:isAdmin) {
+                        Write-Host -Object "##[info] Clearing ENV var $var at scope $scope..."
                         [System.Environment]::SetEnvironmentVariable($var, $null, $scope)
                     }
                 }
@@ -446,17 +450,21 @@ Describe 'Integration Tests' -Tag 'Integration' {
         $env:PesterEnvVar | Should -Be 'original value'
     }
 
-    Context 'available vars' {
-        It 'A variable set for <Scope> is instantly available' -TestCases $script:allScopes {
+    Context 'When an environment variable is new' {
+        BeforeAll {
+            $script:newGuid = ( New-Guid ).ToString().Replace('-', '').ToUpper() 
+        }
+
+        It 'at <Scope> it should be instantly available' -TestCases $script:allScopes {
             param ($Scope)
-            $varName = "$($Scope)_TestVar"
+            $varName = $Scope + "_" + $script:newGuid
             Set-EnvironmentVariable -Name $varName -Value 'test value' -Scope $Scope -Force
-            ( Get-Item -Path "env:$varName" ).Value | Should -Be 'test value'
+            ( Get-ChildItem -Path "env:$varName" ).Value | Should -Be 'test value'
         }
 
         AfterAll {
             foreach ($scope in $script:allScopes) {
-                Set-EnvironmentVariable -Name "$($scope)_TestVar" -Delete
+                Set-EnvironmentVariable -Name ($Scope + "_" + $script:newGuid) -Delete
             }
         }
     }
