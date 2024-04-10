@@ -1,5 +1,6 @@
 ﻿Describe 'Integration Tests' -Skip:(!$script:isAdmin) {
     BeforeDiscovery {
+        . $PSScriptRoot/Test-IsAdmin.ps1
         $script:isAdmin = Test-IsAdmin
     }
 

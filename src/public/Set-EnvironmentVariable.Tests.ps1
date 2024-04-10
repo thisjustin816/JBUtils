@@ -253,6 +253,7 @@ Describe 'Unit Tests' -Tag 'Unit' {
 
 Describe 'Integration Tests' -Tag 'Integration' {
     BeforeDiscovery {
+        . $PSScriptRoot/Test-IsAdmin.ps1
         $script:isAdmin = Test-IsAdmin
 
         $script:allScopes = @(

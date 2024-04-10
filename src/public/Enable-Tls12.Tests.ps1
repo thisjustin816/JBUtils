@@ -1,5 +1,6 @@
 ﻿Describe 'Unit/Integration Tests' {
     BeforeDiscovery {
+        . $PSScriptRoot/Test-IsAdmin.ps1
         $global:isAdmin = Test-IsAdmin
     }
 
