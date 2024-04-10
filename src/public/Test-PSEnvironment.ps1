@@ -29,6 +29,7 @@ N/A
 #>
 
 function Test-PSEnvironment {
+    [OutputType([Bool])]
     [CmdletBinding()]
     param (
         [AllowEmptyString()]
@@ -68,7 +69,7 @@ function Test-PSEnvironment {
             "version $MinimumVersion."
         )
         if ($hostVersion -lt $MinimumVersion) {
-            $errMsg +=  (
+            $errMsg += (
                 "The minimum version of Windows PowerShell that is required by the script ($MinimumVersion) " +
                 "does not match the currently running version ($hostVersion) of Windows PowerShell."
             )
@@ -84,7 +85,7 @@ function Test-PSEnvironment {
             "version $MaximumVersion."
         )
         if ($hostVersion -gt $MaximumVersion) {
-            $errMsg +=  (
+            $errMsg += (
                 "The maximum version of Windows PowerShell that is required by the script ($MaximumVersion) " +
                 "does not match the currently running version ($hostVersion) of Windows PowerShell."
             )

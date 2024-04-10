@@ -30,7 +30,7 @@ function Enable-Tls12 {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
     if ($Persist) {
-        Test-PSEnvironment -CheckAdmin -Exit
+        $null = Test-PSEnvironment -CheckAdmin -Exit
         $psRegPaths = (
             'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Client',
             'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Server'

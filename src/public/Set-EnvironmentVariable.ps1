@@ -60,7 +60,7 @@ function Set-EnvironmentVariable {
 
     begin {
         if ($Scope -eq 'Machine') {
-            Test-PSEnvironment -CheckAdmin -Exit
+            $null = Test-PSEnvironment -CheckAdmin -Exit
         }
     }
 

@@ -1,6 +1,8 @@
-﻿Describe 'Integration Tests' -Tag 'Integration' -Skip:(!$script:isAdmin) {
+﻿Describe 'Integration Tests' -Tag 'Integration' -Skip:(!$global:isAdmin -or $null -ne $env:AGENT_JOBNAME) {
     BeforeDiscovery {
-        $script:isAdmin = Test-IsAdmin
+        . $PSScriptRoot/Test-IsAdmin.ps1
+        $global:isAdmin = Test-IsAdmin
+        $null = $global:isAdmin # Workaround for PSScriptAnalyzer warning
     }
 
     BeforeAll {

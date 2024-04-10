@@ -25,7 +25,7 @@ function Uninstall-ProgramByName {
     )
 
     begin {
-        Test-PSEnvironment -MinimumVersion 5.1 -CheckAdmin -Exit
+        $null = Test-PSEnvironment -MinimumVersion 5.1 -CheckAdmin -Exit
     }
 
     process {

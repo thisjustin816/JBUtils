@@ -259,7 +259,7 @@ Describe 'Integration Tests' -Tag 'Integration' {
             @{ Scope = 'Process' },
             @{ Scope = 'User' }
         )
-        if($script:isAdmin) {
+        if ($script:isAdmin) {
             $script:allScopes += @{ Scope = 'Machine' }
         }
     }
@@ -363,7 +363,7 @@ Describe 'Integration Tests' -Tag 'Integration' {
             Should -Be "this is a $Scope value"
         foreach ($otherScope in @(
             $global:scopes.Values |
-                Where-Object { $_ -ne $Scope -and $_ -ne 'Process' } 
+                Where-Object { $_ -ne $Scope -and $_ -ne 'Process' }
         )) {
             [System.Environment]::GetEnvironmentVariable('ScopeTest', $otherScope) | Should -Be $null
         }
@@ -433,19 +433,19 @@ Describe 'Integration Tests' -Tag 'Integration' {
 
     Context 'When an environment variable is new' {
         BeforeAll {
-            $script:newGuid = ( New-Guid ).ToString().Replace('-', '').ToUpper() 
+            $script:newGuid = ( New-Guid ).ToString().Replace('-', '').ToUpper()
         }
 
         It 'at <Scope> it should be instantly available' -TestCases $script:allScopes {
             param ($Scope)
-            $varName = $Scope + "_" + $script:newGuid
+            $varName = $Scope + '_' + $script:newGuid
             Set-EnvironmentVariable -Name $varName -Value 'test value' -Scope $Scope -Force
             ( Get-ChildItem -Path "env:$varName" ).Value | Should -Be 'test value'
         }
 
         AfterAll {
             foreach ($scope in $script:allScopes) {
-                Set-EnvironmentVariable -Name ($Scope + "_" + $script:newGuid) -Delete
+                Set-EnvironmentVariable -Name ($Scope + '_' + $script:newGuid) -Delete
             }
         }
     }
