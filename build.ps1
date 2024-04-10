@@ -23,7 +23,7 @@ Get-ChildItem -Path "$SourceDirectory/public" -Filter '*.ps1' -Exclude '*.Tests.
         $moduleContent += '<#'
         $moduleContent += (
             # Ignore anything in the function files above the help comments
-            Get-Content -Path $_.FullName | Select-String -Pattern "<#" -SimpleMatch -Context 0,99999
+            Get-Content -Path $_.FullName | Select-String -Pattern '<#' -SimpleMatch -Context 0, 99999
         ).Context.PostContext | ForEach-Object {
             if ($_ -ne $null) {
                 $_.Replace('../../private', 'private')
