@@ -1,5 +1,3 @@
-#Requires -Modules PSModuleUtils
-
 $BuildPSModule = @{
     Name        = 'JBUtils'
     Version     = '0.0.2'
@@ -9,6 +7,7 @@ $BuildPSModule = @{
 
 Push-Location -Path $PSScriptRoot
 Import-Module -Name "$PSScriptRoot/src/$($BuildPSModule['Name']).psm1" -Force
+Install-Module -Name PSModuleUtils -Force
 Build-PSModule @BuildPSModule
 Test-PSModule -Name $BuildPSModule['Name']
 Pop-Location
