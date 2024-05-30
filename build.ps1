@@ -1,6 +1,6 @@
 $BuildPSModule = @{
     Name        = 'JBUtils'
-    Version     = '1.0.6'
+    Version     = '1.0.7'
     Description = 'A module with functions for various basic/low-level tasks.'
     Tags        = ('PSEdition_Desktop', 'PSEdition_Core', 'Windows')
 }
