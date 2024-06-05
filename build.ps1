@@ -7,6 +7,7 @@ $BuildPSModule = @{
 
 Push-Location -Path $PSScriptRoot
 Import-Module -Name "$PSScriptRoot/src/$($BuildPSModule['Name']).psm1" -Force
+Install-Module -Name Pester -SkipPublisherCheck -Force
 Install-Module -Name PSModuleUtils -Force
 if (!$env:GITHUB_ACTIONS) {
     Invoke-PSModuleAnalyzer -Fix
