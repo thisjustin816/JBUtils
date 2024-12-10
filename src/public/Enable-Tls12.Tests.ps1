@@ -26,7 +26,7 @@
 
         It 'should throw when using -Persist' {
             { Enable-Tls12 -Persist } | Should -Throw
-            Assert-MockCalled Start-Process -Times 0
+            Should -Invoke Start-Process -Times 0
         }
     }
 
