@@ -1,6 +1,7 @@
 Describe 'Unit Tests' -Tag 'Unit' {
     BeforeAll {
         . $PSScriptRoot/Test-JsonSchema.ps1
+        . $PSScriptRoot/Get-PSVersion.ps1
         $script:schema = @'
 {
     "type": "object",
@@ -27,14 +28,17 @@ Describe 'Unit Tests' -Tag 'Unit' {
 }
 '@
     }
+
     Context 'When running on PowerShell Core' -Skip:(( Get-PSVersion ).Major -lt 6) {
         It 'Should validate a valid JSON schema' {
             Test-JsonSchema -Json $script:validJson -Schema $script:schema | Should -Be $true
         }
+
         It 'Should throw an error for an invalid JSON schema' {
             { Test-JsonSchema -Json $script:invalidJson -Schema $script:schema } | Should -Throw
         }
     }
+
     Context 'When running on PowerShell Desktop' {
         BeforeAll {
             . $PSScriptRoot/Get-PSVersion.ps1
@@ -44,9 +48,11 @@ Describe 'Unit Tests' -Tag 'Unit' {
                 }
             }
         }
+
         It 'Should validate a valid JSON schema' {
             Test-JsonSchema -Json $script:validJson -Schema $script:schema | Should -Be $true
         }
+
         It 'Should throw an error for an invalid JSON schema' {
             { Test-JsonSchema -Json $script:invalidJson -Schema $script:schema } | Should -Throw
         }
