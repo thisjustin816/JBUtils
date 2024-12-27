@@ -1,6 +1,6 @@
 Describe 'Unit Tests' -Tag 'Unit' {
     BeforeAll {
-        Import-Module -Name "$PSScriptRoot/../LandingZoneGeneration.psm1" -Force
+        . $PSScriptRoot/Test-JsonSchema.ps1
         $script:schema = @'
 {
     "type": "object",
@@ -37,7 +37,8 @@ Describe 'Unit Tests' -Tag 'Unit' {
     }
     Context 'When running on PowerShell Desktop' {
         BeforeAll {
-            Mock Get-PSVersion -ModuleName LandingZoneGeneration {
+            . $PSScriptRoot/Get-PSVersion.ps1
+            Mock Get-PSVersion {
                 [PSCustomObject]@{
                     Major = 5
                 }

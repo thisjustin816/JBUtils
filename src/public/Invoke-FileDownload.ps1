@@ -1,4 +1,4 @@
-#
+<#
 .SYNOPSIS
 Downloads a remote file, optionally using credentials.
 .DESCRIPTION
@@ -27,6 +27,7 @@ Invoke-FileDownload $source
 N/A
 #>
 function Invoke-FileDownload {
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '')]
     [CmdletBinding(DefaultParameterSetName = 'Credential')]
     param (
         [Parameter(Mandatory = $true, Position = 0)]
@@ -56,7 +57,7 @@ function Invoke-FileDownload {
     .DESCRIPTION
     Generates a sequence of fibonacci numbers to use for delays.
     #>
-    function Get-FibonacciNumbers {
+    function Get-FibonacciSequence {
         param ([int]$n)
         if ($n -le 0) { return $n }
         $fibonacci = @(1)
@@ -70,7 +71,7 @@ function Invoke-FileDownload {
     .DESCRIPTION
     Opens a web request and resumes from a specified range.
     #>
-    function New-HttpWebRequest {
+    function Invoke-HttpWebRequest {
         [CmdletBinding()]
         param (
             [Parameter(Mandatory = $true, Position = 0)]
@@ -100,13 +101,13 @@ function Invoke-FileDownload {
     }
 
 
-    $retryDelaySeconds = @( Get-FibonacciNumbers -n $MaximumRetries )
+    $retryDelaySeconds = @( Get-FibonacciSequence -n $MaximumRetries )
     if ($Username) {
         $securePass = ConvertTo-SecureString $PlainTextPass -AsPlainText -Force
         $Credential = New-Object System.Management.Automation.PSCredential ($Username, $securePass)
     }
     foreach ($uri in $Source) {
-        New-HttpWebRequest -Uri $uri -Credential $Credential
+        Invoke-HttpWebRequest -Uri $uri -Credential $Credential
         if (-not $FileName) {
             Write-Host 'Getting file information...'
             $contentDisposition = $script:response.Headers['Content-Disposition']
@@ -186,14 +187,16 @@ function Invoke-FileDownload {
                     # Re-open connection on retry at current read position
                     $fileSize = $tempFile.FullName | Get-Item | Select-Object -ExpandProperty Length
                     if ( Compare-Object -ReferenceObject $fileSize -DifferenceObject $totalBytesRead ) {
-                        Write-Warning 'The in-progress file size does not match the expected size. Restarting download...'
+                        Write-Warning (
+                            'The in-progress file size does not match the expected size. Restarting download...'
+                        )
                         $totalBytesRead = 0
                         $fileStream.Close()
                         $tempFile | Remove-Item -Force -ErrorAction SilentlyContinue
                         $tempFile = New-Item -Path $tempFilePath -ItemType File -Force
                         $fileStream = [System.IO.File]::Create($tempFile.FullName)
                     }
-                    New-HttpWebRequest -Uri $uri -Credential $Credential -CurrentRange $totalBytesRead
+                    Invoke-HttpWebRequest -Uri $uri -Credential $Credential -CurrentRange $totalBytesRead
                     continue
                 }
                 else {
