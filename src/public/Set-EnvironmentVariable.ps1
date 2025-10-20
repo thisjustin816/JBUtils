@@ -136,11 +136,8 @@ function Set-EnvironmentVariable {
                     }
                 }
 
-                if (
-                    $Scope -eq 'Process' -or
-                    $isNewVar -or
-                    ($Name -match 'PATH' -and $isArray)
-                ) {
+                # Only update process environment if we're targeting Process scope or PATH
+                if ($Scope -eq 'Process' -or $Name -match 'path') {
                     Set-Item -Path "env:$Name" -Value $finalValue -Force
                 }
             }

@@ -48,7 +48,7 @@ function Write-ProgressToHost {
             }
             'SecondsRemaining' { "-$($SecondsRemaining)s" }
             'Completed' { 'Completed' }
-            Default { $PSBoundParameters[$_] }
+            default { $PSBoundParameters[$_] }
         }
     }
 
