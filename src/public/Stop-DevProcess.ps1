@@ -36,7 +36,6 @@ function Stop-DevProcess {
         '*chromedriver'
     )
 
-    $null = Test-PSEnvironment -CheckAdmin -Exit
     foreach ($processName in $Optional) {
         $processes = @( Get-Process -Name $processName -ErrorAction SilentlyContinue )
         foreach ($process in $processes) {
@@ -51,7 +50,8 @@ function Stop-DevProcess {
                 "$nameString is running and could cause issues. Would you like to stop it? (y/n):"
             )
             if ($stop.ToLower() -eq 'y') {
-                if ($PSCmdlet.ShouldProcess($process, 'Stop-Process')) {
+                if ($PSCmdlet.ShouldProcess($nameString, 'Stop Process')) {
+                    $null = Test-PSEnvironment -CheckAdmin -Exit
                     $process | Stop-ProcessTree
                 }
             }
@@ -69,7 +69,8 @@ function Stop-DevProcess {
             $nameString = "$programName [$($process.Id)]"
             $stopMessage = "$nameString is running and will be stopped."
             Write-Host -Object $stopMessage
-            if ($PSCmdlet.ShouldProcess($process, 'Stop-Process')) {
+            if ($PSCmdlet.ShouldProcess($nameString, 'Stop Process')) {
+                $null = Test-PSEnvironment -CheckAdmin -Exit
                 $process | Stop-ProcessTree
             }
         }

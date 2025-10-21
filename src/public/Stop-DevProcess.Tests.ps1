@@ -1,4 +1,4 @@
-﻿Describe 'Integration Tests' -Skip:(!$script:isAdmin) {
+﻿Describe 'Integration Tests' {
     BeforeDiscovery {
         . $PSScriptRoot/Test-IsAdmin.ps1
         $script:isAdmin = Test-IsAdmin
@@ -20,17 +20,17 @@
             Start-Process `
                 -FilePath "$env:SYSTEMROOT/System32/cmd.exe" `
                 -ArgumentList "/c $env:SYSTEMROOT/System32/timeout.exe /t 60"
-            Start-Sleep -Milliseconds 500
+            Start-Sleep -Milliseconds 1000
         }
     }
 
-    It 'should kill a process without prompting if using Required' {
+    It 'should kill a process without prompting if using Required' -Skip:(-not $script:isAdmin) {
         Start-Timeout
         Stop-DevProcess -Required timeout
         Get-Process timeout -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
     }
 
-    It 'should kill the parent and child processes' {
+    It 'should kill the parent and child processes' -Skip:(-not $script:isAdmin) {
         Start-Timeout
         Stop-DevProcess -Required cmd
         Get-Process cmd -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
@@ -42,7 +42,7 @@
             Mock Read-Host { 'y' }
         }
 
-        It 'should kill the process' {
+        It 'should kill the process' -Skip:(-not $script:isAdmin) {
             Start-Timeout
             Stop-DevProcess -Optional timeout
             Get-Process timeout -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
