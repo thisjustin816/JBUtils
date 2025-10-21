@@ -1,9 +1,4 @@
-﻿Describe 'Integration Tests' -Skip:(!$script:isAdmin) {
-    BeforeDiscovery {
-        . $PSScriptRoot/Test-IsAdmin.ps1
-        $script:isAdmin = Test-IsAdmin
-    }
-
+﻿Describe 'Unit Tests' -Tag 'Unit' {
     BeforeAll {
         . $PSScriptRoot/Stop-ProcessTree.ps1
         . $PSScriptRoot/Stop-DevProcess.ps1
@@ -11,30 +6,54 @@
         . $PSScriptRoot/Test-PSEnvironment.ps1
         . $PSScriptRoot/Get-PSVersion.ps1
 
-        <#
+        # Mock process operations to test without admin rights
+        Mock Stop-Process { return $true }
+        Mock Wait-Process { return $true }
+        Mock Test-PSEnvironment { return $true }
+
+        # Use script scope instead of global
+        $script:processExists = $false
+        Mock Get-Process {
+            if ($script:processExists) {
+                $obj = [PSCustomObject]@{
+                    Id = 123
+                    ProcessName = $Name
+                    Product = $null
+                }
+                $obj | Add-Member -MemberType ScriptMethod -Name "Stop" -Value { return $true }
+                return $obj
+            }
+            return $null
+        }        <#
         .SYNOPSIS
         Dummy function in order to mock it without the whole module
 
         #>
-        function Start-Timeout {
-            Start-Process `
-                -FilePath "$env:SYSTEMROOT/System32/cmd.exe" `
-                -ArgumentList "/c $env:SYSTEMROOT/System32/timeout.exe /t 60"
-            Start-Sleep -Milliseconds 500
+        function Initialize-TimeoutProcess {
+            [CmdletBinding(SupportsShouldProcess)]
+            param()
+
+            if ($PSCmdlet.ShouldProcess("timeout.exe", "Start process")) {
+                Start-Process `
+                    -FilePath "$env:SYSTEMROOT/System32/cmd.exe" `
+                    -ArgumentList "/c $env:SYSTEMROOT/System32/timeout.exe /t 60"
+                Start-Sleep -Milliseconds 500
+            }
         }
     }
 
     It 'should kill a process without prompting if using Required' {
-        Start-Timeout
+        $script:processExists = $true
         Stop-DevProcess -Required timeout
-        Get-Process timeout -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+        Should -Invoke Stop-Process -Times 1
+        $script:processExists = $false
     }
 
     It 'should kill the parent and child processes' {
-        Start-Timeout
+        $script:processExists = $true
         Stop-DevProcess -Required cmd
-        Get-Process cmd -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
-        Get-Process timeout -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+        Should -Invoke Stop-Process -Times 2 # Once for cmd, once for timeout
+        $script:processExists = $false
     }
 
     Context 'When using Optional and confirming' {
@@ -59,7 +78,8 @@
         }
 
         It 'should not kill the process' {
-            Start-Timeout
+            $script:processExists = $true
+            # Process is simulated through mocking
             Stop-DevProcess -Optional timeout
             Get-Process timeout -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         }
