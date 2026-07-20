@@ -38,7 +38,7 @@ function Get-PatPSCredential {
     )
 
     if ([string]::IsNullOrEmpty($Pat)) {
-        throw "No PAT provided and SYSTEM_ACCESSTOKEN environment variable is not set"
+        throw 'No PAT provided and SYSTEM_ACCESSTOKEN environment variable is not set'
     }
 
     $securePat = ConvertTo-SecureString -String $Pat -AsPlainText -Force
