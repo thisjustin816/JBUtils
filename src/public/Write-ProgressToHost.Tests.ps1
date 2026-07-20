@@ -4,6 +4,7 @@ param ()
 
 Describe 'Integration Tests' {
     BeforeAll {
+        . $PSScriptRoot/Write-ConsoleMessage.ps1
         . $PSScriptRoot/Write-ProgressToHost.ps1
     }
 

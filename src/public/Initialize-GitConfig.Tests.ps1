@@ -1,5 +1,6 @@
 ﻿Describe 'Integration Tests' {
     BeforeAll {
+        . $PSScriptRoot/Write-ConsoleMessage.ps1
         . $PSScriptRoot/Write-ProgressToHost.ps1
         . $PSScriptRoot/Start-CliProcess.ps1
         . $PSScriptRoot/Initialize-GitConfig.ps1

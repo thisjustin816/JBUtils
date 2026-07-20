@@ -58,7 +58,7 @@ function Write-ProgressToHost {
     }
     $message += ($paramValues -join ' | ')
     if ($ProgressPreference -eq 'Continue') {
-        Write-Host -Object $message -ForegroundColor DarkGray
+        Write-ConsoleMessage -Message $message -ForegroundColor DarkGray
     }
     else {
         Write-Verbose -Message $message
