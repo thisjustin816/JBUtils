@@ -1,0 +1,9 @@
+Describe 'Integration Tests' -Tag 'Integration' {
+    BeforeAll {
+        . $PSScriptRoot/../../src/Public/Show-ConsoleColor.ps1
+    }
+
+    It 'should show available console colors' {
+        Show-ConsoleColor 6>&1 | Should -Not -BeNullOrEmpty
+    }
+}

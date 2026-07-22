@@ -1,50 +1,49 @@
 # JBUtils
 
-A module with functions for various basic/low-level tasks.
+A PowerShell module with functions for common, low-level tasks.
 
 ## Setup
 
 ```powershell
-Install-Module JBUtils
+Install-Module -Name JBUtils
 ```
 
-## PowerShell Module Development
+JBUtils supports Windows PowerShell 5.1 and PowerShell Core.
 
-Follow [The PowerShell Best Practices and Style Guide](https://poshcode.gitbooks.io/powershell-practice-and-style/) as much as possible, with the following rules being the most important:
+## Development
 
-- Use [Approved Verbs](https://docs.microsoft.com/en-us/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands?view=powershell-5.1) for commands so that PowerShell's built-in ability to autocomplete un-imported functions works.
-- Add help comments to **all** functions because each module's wiki is auto-generated from them.
+Follow the [PowerShell Best Practices and Style Guide](https://poshcode.gitbooks.io/powershell-practice-and-style/)
+and these repository conventions:
 
-Use the following additional guidelines:
+- Use approved verbs and add comment-based help to every function.
+- Keep each function in a same-named `.ps1` file.
+- Put exported functions in `src/Public` and implementation details in `src/Private`.
+- Do not use `Export-ModuleMember` in source files. ModuleBuilder derives exports from `src/Public`.
+- Keep tests under the top-level `tests` directory, mirroring the source layout.
+- Treat `src/JBUtils.psd1` as the authored module manifest. The generated `.psm1` and release manifest belong
+  under `out`.
+- Preserve Windows PowerShell 5.1 compatibility unless a major release explicitly changes the requirement.
 
-- The module file itself (`.psm1`) should not contain any functions or logic, in most cases, other than a `foreach` loop to dot source all the `.ps1` files and `New-Alias` statements for specific functions.
-- Ideally, each module and each of its functions should have a set of [Pester](https://github.com/pester/Pester) unit/integration tests. At the least, any new functions or functionality should have an associated test.
-- Create all functions as single `.ps1` files with the same name and without `Export-ModuleMember` statements.
-  - The files should be in an appropriate nested `Public` folder that corresponds to its API category.
-  - Functions that are used by other functions should be put in either `Utils` or `Private`, depending on their usage.
-- The module file (`.psm1`) and each function should have a corresponding `.Tests.ps1` file containing Pester unit/integration tests.
-- Don't change any documentation or manifest files; they are automatically populated by the pipeline.
+Install PSModuleUtils 2.0.0 or later, then run the build from the repository root:
 
-The folder structure should be maintained like the example below:
+```powershell
+Install-Module -Name PSModuleUtils -MinimumVersion 2.0.0 -Scope CurrentUser
+./build.ps1
+```
 
-```console
-\MODULEREPODIRECTORY
-├───.github
-│   └───workflows
-├───.gitignore
-├───LICENSE
-├───README.md
-│
-└───src
-    ├───ModuleName.Module.Tests.ps1
-    ├───ModuleName.psm1
-    │
-    public
-    ├───functionalArea
-    │   ├───Verb-Noun.ps1
-    │   └───Verb-Noun.Tests.ps1
-    │
-    private
-    ├───Verb-Noun.ps1
-    └───Verb-Noun.Tests.ps1
+The build analyzes the source, creates the versioned module under `out/JBUtils`, runs the full Pester suite,
+and verifies that the built module can be packaged for publication.
+
+```text
+JBUtils/
+|-- src/
+|   |-- JBUtils.psd1
+|   |-- Private/
+|   `-- Public/
+|-- tests/
+|   |-- JBUtils.Module.Tests.ps1
+|   |-- Private/
+|   `-- Public/
+|-- build.ps1
+`-- publish.ps1
 ```

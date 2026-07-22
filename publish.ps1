@@ -1,4 +1,4 @@
 $Name = 'JBUtils'
 
-Import-Module -Name "$PSScriptRoot/src/$Name.psm1" -Force
-Publish-PSModule -Name $Name -Confirm:(!$env:GITHUB_ACTIONS)
+Import-Module -Name "$PSScriptRoot/out/$Name" -Force -ErrorAction Stop
+Publish-PSModule -Name $Name -Confirm:(-not $env:GITHUB_ACTIONS)
