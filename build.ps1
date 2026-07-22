@@ -1,15 +1,11 @@
 $BuildPSModule = @{
-    Name        = 'JBUtils'
-    Version     = '1.2.0'
-    Description = 'A module with functions for various basic/low-level tasks.'
-    Tags        = ('PSEdition_Desktop', 'PSEdition_Core', 'Windows')
+    Name    = 'JBUtils'
+    Version = '1.3.0'
 }
 
 Push-Location -Path $PSScriptRoot
-Import-Module -Name "$PSScriptRoot/src/$($BuildPSModule['Name']).psm1" -Force
-Install-Module -Name Pester -SkipPublisherCheck -Force
-Install-Module -Name PSModuleUtils -Force
-if (!$env:GITHUB_ACTIONS) {
+Import-Module -Name 'PSModuleUtils' -MinimumVersion '2.0.0' -Force -ErrorAction Stop
+if (-not $env:GITHUB_ACTIONS) {
     Invoke-PSModuleAnalyzer -Fix
 }
 Build-PSModule @BuildPSModule
