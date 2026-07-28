@@ -20,7 +20,17 @@ Describe 'Integration Tests' {
             Start-Process `
                 -FilePath "$env:SYSTEMROOT/System32/cmd.exe" `
                 -ArgumentList "/c $env:SYSTEMROOT/System32/timeout.exe /t 60"
-            Start-Sleep -Milliseconds 1000
+
+            # Wait for the child to exist rather than sleeping a fixed interval. Returning before
+            # timeout.exe spawns leaves Stop-DevProcess nothing to enumerate, so it exits without
+            # killing anything and the process appears moments later, when the test asserts.
+            $deadline = [DateTime]::UtcNow.AddSeconds(30)
+            while (-not (Get-Process -Name 'timeout' -ErrorAction SilentlyContinue)) {
+                if ([DateTime]::UtcNow -gt $deadline) {
+                    throw 'timeout.exe did not start within 30 seconds.'
+                }
+                Start-Sleep -Milliseconds 50
+            }
         }
     }
 
