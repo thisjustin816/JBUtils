@@ -40,19 +40,22 @@ Describe 'Module Validation' {
             $package.FullName | Should -Exist
         }
 
-        It 'should not export any package management functions' {
+        It 'should export exactly its own public functions' {
             Get-Module -Name 'JBUtils' -All | Remove-Module -Force -ErrorAction SilentlyContinue
-            $packageManagementFunctions = Get-Command -Module (
-                'PackageManagement', 'PowerShellGet', 'Microsoft.PowerShell.PSResourceGet'
+            $module = Import-Module -Name $script:builtManifest.FullName -Force -PassThru
+
+            $expected = @(
+                Get-ChildItem -Path "$PSScriptRoot/../src/Public" -Filter '*.ps1' -File |
+                    ForEach-Object { $_.BaseName } |
+                    Sort-Object
             )
-            Import-Module -Name $script:builtManifest.FullName -Force
-            $moduleFunctions = Get-Command -Module 'JBUtils'
-            foreach ($function in $packageManagementFunctions) {
-                foreach ($moduleFunction in $moduleFunctions) {
-                    $moduleFunction.Name | Should -Not -Be $function.Name
-                }
+
+            try {
+                @($module.ExportedFunctions.Keys | Sort-Object) | Should -Be $expected
             }
-            Remove-Module -Name 'JBUtils' -Force
+            finally {
+                Remove-Module -Name 'JBUtils' -Force -ErrorAction SilentlyContinue
+            }
         }
     }
 }
