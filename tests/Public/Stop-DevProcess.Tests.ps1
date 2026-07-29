@@ -17,9 +17,10 @@ Describe 'Integration Tests' {
 
         #>
         function Start-Timeout {
-            Start-Process `
+            $parentProcess = Start-Process `
                 -FilePath "$env:SYSTEMROOT/System32/cmd.exe" `
-                -ArgumentList "/c $env:SYSTEMROOT/System32/timeout.exe /t 60"
+                -ArgumentList "/c $env:SYSTEMROOT/System32/timeout.exe /t 60" `
+                -PassThru
 
             # Wait for the child to exist rather than sleeping a fixed interval. Returning before
             # timeout.exe spawns leaves Stop-DevProcess nothing to enumerate, so it exits without
@@ -31,19 +32,24 @@ Describe 'Integration Tests' {
                 }
                 Start-Sleep -Milliseconds 50
             }
+
+            $parentProcess
         }
     }
 
     It 'should kill a process without prompting if using Required' -Skip:(-not $script:isAdmin) {
-        Start-Timeout
+        $null = Start-Timeout
         Stop-DevProcess -Required timeout
         Get-Process timeout -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
     }
 
     It 'should kill the parent and child processes' -Skip:(-not $script:isAdmin) {
-        Start-Timeout
+        $parentProcess = Start-Timeout
         Stop-DevProcess -Required cmd
-        Get-Process cmd -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+        # Asserted against the cmd.exe this test started, not the machine's cmd.exe population. A
+        # bare 'Get-Process cmd' claims no cmd.exe exists anywhere, which any shell a CI agent
+        # happens to be running falsifies at random.
+        $parentProcess.HasExited | Should -BeTrue
         Get-Process timeout -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
     }
 
@@ -53,7 +59,7 @@ Describe 'Integration Tests' {
         }
 
         It 'should kill the process' -Skip:(-not $script:isAdmin) {
-            Start-Timeout
+            $null = Start-Timeout
             Stop-DevProcess -Optional timeout
             Get-Process timeout -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
         }
@@ -69,7 +75,7 @@ Describe 'Integration Tests' {
         }
 
         It 'should not kill the process' {
-            Start-Timeout
+            $null = Start-Timeout
             Stop-DevProcess -Optional timeout
             Get-Process timeout -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
         }
