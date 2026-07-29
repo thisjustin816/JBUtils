@@ -41,7 +41,7 @@ function Stop-ProcessTree {
                     ) -notcontains $_.ProcessId
                 } |
                 ForEach-Object -Process { Stop-ProcessTree -ProcessId $_.ProcessId }
-            $processToStop = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+            $processToStop = Get-Process -Id $id -ErrorAction SilentlyContinue
             if ($processToStop) {
                 <# Use for debugging unexpected kill behavior
                 $processToStop |
