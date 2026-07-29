@@ -15,14 +15,26 @@ cannot express a version range, which is the whole point of this function.
 The module to install.
 
 .PARAMETER Version
-A NuGet version range or an exact version, as Install-PSResource takes it. An open upper bound such
-as '[5.1.0,]' reads as "this or newer"; omit the parameter to accept any version.
+An exact version or a NuGet version range, as Install-PSResource takes it. Mind the one place
+PSResourceGet deliberately departs from NuGet's table: a bare version is the *required* version here,
+not a minimum, so '5.0.241' matches only that build where NuGet would read it as "5.0.241 or newer".
+Bracket the bound to get a range - '[5.1.0,]' is "this or newer". Omit the parameter to accept any
+version.
 
 .PARAMETER Scope
 Where to install when an install is needed.
 
 .PARAMETER Repository
 The repository to install from. Defaults to whatever Install-PSResource resolves.
+
+.PARAMETER Force
+Installs even when a version already satisfies the request, replacing what is there. Skips the
+installed-version check entirely, so this is the switch to reach for when a local copy is suspect
+rather than absent.
+
+.PARAMETER SkipDependencyCheck
+Skips resolving the module's own dependencies. Worth setting for families that pin themselves as a
+matched set, such as AWS.Tools, where resolving each member's graph is slow and buys nothing.
 
 .OUTPUTS
 None.
@@ -32,6 +44,18 @@ Install-RequiredModule -Name Pester -Version '[5.7.1,5.999.999]'
 
 .EXAMPLE
 Install-RequiredModule -Name PSModuleUtils -Version '[4.1.0,]'
+
+.EXAMPLE
+Install-RequiredModule -Name AWS.Tools.ECS -Version '5.0.241' -SkipDependencyCheck
+
+.EXAMPLE
+Install-RequiredModule -Name AWS.Tools.ECS -Version '5.0.241' -Force
+
+.LINK
+https://learn.microsoft.com/nuget/concepts/package-versioning#version-ranges
+
+.LINK
+https://learn.microsoft.com/powershell/module/microsoft.powershell.psresourceget/install-psresource
 
 .NOTES
 N/A
@@ -51,7 +75,11 @@ function Install-RequiredModule {
         [String]$Scope = 'CurrentUser',
 
         [ValidateNotNullOrEmpty()]
-        [String]$Repository
+        [String]$Repository,
+
+        [Switch]$Force,
+
+        [Switch]$SkipDependencyCheck
     )
 
     $resourceParameters = @{ Name = $Name }
@@ -59,9 +87,14 @@ function Install-RequiredModule {
         $resourceParameters.Version = $Version
     }
 
-    $installed = Get-InstalledPSResource @resourceParameters -ErrorAction SilentlyContinue |
-        Sort-Object -Property Version -Descending |
-        Select-Object -First 1
+    $installed = if ($Force) {
+        $null
+    }
+    else {
+        Get-InstalledPSResource @resourceParameters -ErrorAction SilentlyContinue |
+            Sort-Object -Property Version -Descending |
+            Select-Object -First 1
+    }
 
     if ($installed) {
         Write-Verbose -Message "$Name $($installed.Version) already satisfies '$Version'."
@@ -74,6 +107,13 @@ function Install-RequiredModule {
         }
         if ($Repository) {
             $installParameters.Repository = $Repository
+        }
+        if ($Force) {
+            # Install-PSResource spells "replace what is already there" as -Reinstall.
+            $installParameters.Reinstall = $true
+        }
+        if ($SkipDependencyCheck) {
+            $installParameters.SkipDependencyCheck = $true
         }
 
         Write-Verbose -Message "Installing $Name '$Version'."
