@@ -1,6 +1,6 @@
 @{
     RootModule           = 'JBUtils.psm1'
-    ModuleVersion        = '1.3.2'
+    ModuleVersion        = '1.4.0'
     GUID                 = 'de33eef4-1434-4420-a7f4-40fb4a6e7ee6'
     Author               = ''
     CompanyName          = ''
