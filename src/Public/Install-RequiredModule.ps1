@@ -36,6 +36,10 @@ rather than absent.
 Skips resolving the module's own dependencies. Worth setting for families that pin themselves as a
 matched set, such as AWS.Tools, where resolving each member's graph is slow and buys nothing.
 
+.PARAMETER AcceptLicense
+Accepts the license for modules whose metadata mandates it, which would otherwise prompt and so hang
+an unattended install.
+
 .OUTPUTS
 None.
 
@@ -79,7 +83,9 @@ function Install-RequiredModule {
 
         [Switch]$Force,
 
-        [Switch]$SkipDependencyCheck
+        [Switch]$SkipDependencyCheck,
+
+        [Switch]$AcceptLicense
     )
 
     $resourceParameters = @{ Name = $Name }
@@ -91,9 +97,24 @@ function Install-RequiredModule {
         $null
     }
     else {
-        Get-InstalledPSResource @resourceParameters -ErrorAction SilentlyContinue |
+        # Neither source alone is sufficient. Get-InstalledPSResource resolves prerelease suffixes and
+        # NuGet's rule that 1.0.0.0 and 1.0.0 are one version, which Test-VersionRange cannot, but it
+        # sees only what a package manager installed. Get-Module -ListAvailable also sees a copy that
+        # arrived by file copy - AWS.Tools' zip bundle, a pre-baked CI image, a vendored PSModulePath
+        # folder - which would otherwise reinstall on every run.
+        $tracked = Get-InstalledPSResource @resourceParameters -ErrorAction SilentlyContinue |
             Sort-Object -Property Version -Descending |
             Select-Object -First 1
+
+        if ($tracked) {
+            $tracked
+        }
+        else {
+            Get-Module -ListAvailable -Name $Name -ErrorAction SilentlyContinue |
+                Where-Object { Test-VersionRange -Version $_.Version -Range $Version } |
+                Sort-Object -Property Version -Descending |
+                Select-Object -First 1
+        }
     }
 
     if ($installed) {
@@ -114,6 +135,9 @@ function Install-RequiredModule {
         }
         if ($SkipDependencyCheck) {
             $installParameters.SkipDependencyCheck = $true
+        }
+        if ($AcceptLicense) {
+            $installParameters.AcceptLicense = $true
         }
 
         Write-Verbose -Message "Installing $Name '$Version'."
