@@ -1,4 +1,3 @@
-[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidGlobalVars', '')]
 [CmdletBinding()]
 param()
 Describe 'Unit Tests' -Tag 'Unit' {
@@ -7,6 +6,7 @@ Describe 'Unit Tests' -Tag 'Unit' {
         . $PSScriptRoot/../../src/Public/Get-EnvironmentVariable.ps1
         . $PSScriptRoot/../../src/Public/Test-IsAdmin.ps1
         . $PSScriptRoot/../../src/Public/Test-PSEnvironment.ps1
+        . $PSScriptRoot/../../src/Private/Set-EnvironmentVariableValue.ps1
         . $PSScriptRoot/../../src/Public/Set-EnvironmentVariable.ps1
 
         $script:isAdmin = Test-IsAdmin
@@ -18,12 +18,18 @@ Describe 'Unit Tests' -Tag 'Unit' {
         #>
         function Clear-TestEnvVar {
             foreach ($var in ('PesterEnvVar', 'ScopeTest')) {
-                foreach ($scope in 'Machine', 'User', 'Process') {
+                foreach ($scope in 'Process') {
                     if ($script:isAdmin -or $scope -ne 'Machine') {
                         Write-Host -Object "##[info] Clearing ENV var $var at scope $scope..."
                         [System.Environment]::SetEnvironmentVariable($var, $null, $scope)
                     }
                 }
+            }
+        }
+
+        Mock Set-EnvironmentVariableValue {
+            if ($Scope -eq 'Process') {
+                [Environment]::SetEnvironmentVariable($Name, $Value, $Scope)
             }
         }
 
@@ -50,12 +56,19 @@ Describe 'Unit Tests' -Tag 'Unit' {
     }
 
     It 'should output an object if PassThru is specified' {
-        Set-EnvironmentVariable -Name PesterEnvVar -Value 'some value' -PassThru |
-            ForEach-Object -Process {
-                $_.Name | Should -Be 'PesterEnvVar'
-                $_.Value | Should -Be 'some value'
-                $_.Scope | Should -Be 'Process'
+        Mock Get-EnvironmentVariable {
+            [PSCustomObject]@{
+                Name  = $Name
+                Value = [Environment]::GetEnvironmentVariable($Name, $Scope)
+                Scope = $Scope
             }
+        }
+        Clear-TestEnvVar
+        $result = @(Set-EnvironmentVariable -Name PesterEnvVar -Value 'some value' -PassThru)
+        $result.Count | Should -Be 1
+        $result[0].Name | Should -Be 'PesterEnvVar'
+        $result[0].Value | Should -Be 'some value'
+        $result[0].Scope | Should -Be 'Process'
     }
 
     Context 'overwrite value' {
@@ -109,13 +122,11 @@ Describe 'Unit Tests' -Tag 'Unit' {
 
     Context 'scope handling' {
         BeforeDiscovery {
-            $global:scopes = @(
+            $script:unitScopes = @(
                 @{ Scope = 'Process' }
                 @{ Scope = 'User' }
+                @{ Scope = 'Machine' }
             )
-            if ($script:isAdmin) {
-                $global:scopes += @{ Scope = 'Machine' }
-            }
         }
 
         BeforeAll {
@@ -128,13 +139,14 @@ Describe 'Unit Tests' -Tag 'Unit' {
             }
         }
 
-        It 'should only write to the scope that is specified: <Scope>' -TestCases $script:allScopes {
+        It 'should only write to the scope that is specified: <Scope>' -TestCases $script:unitScopes {
             param ($Scope)
             Clear-TestEnvVar
             Set-EnvironmentVariable -Name ScopeTest -Value "this is a $Scope value" -Scope $Scope
-            # Test the value is set in the target scope
-            [System.Environment]::GetEnvironmentVariable('ScopeTest', $Scope) |
-                Should -Be "this is a $Scope value"
+            $expectedScope = $Scope
+            Should -Invoke Set-EnvironmentVariableValue -Times 1 -Exactly -ParameterFilter {
+                $Name -eq 'ScopeTest' -and $Scope -eq $expectedScope -and $Value -eq "this is a $expectedScope value"
+            }
         }
 
         It 'should throw an error for an invalid scope' {
@@ -200,12 +212,12 @@ Describe 'Unit Tests' -Tag 'Unit' {
         }
 
         It "should return the original object even if it didn't overwrite the variable" {
-            Set-EnvironmentVariable -Name PATH -Value 'first/path;second/path;third/path' |
-                ForEach-Object -Process {
-                    $_.Name | Should -Not -BeNullOrEmpty
-                    $_.Value | Should -Not -BeNullOrEmpty
-                    $_.Scope | Should -Not -BeNullOrEmpty
-                }
+            $result = @(Set-EnvironmentVariable -Name PATH -Value 'first/path;second/path;third/path' -PassThru)
+            $result.Count | Should -Be 1
+            $result[0].Name | Should -Be 'PATH'
+            $result[0].Value | Should -Be 'first/path;second/path;third/path'
+            $result[0].Scope | Should -Be 'Process'
+            Should -Invoke Set-EnvironmentVariableValue -Times 0
         }
     }
 
@@ -233,6 +245,12 @@ Describe 'Unit Tests' -Tag 'Unit' {
             $env:PesterEnvVar | Should -Be 'user value'
         }
 
+        It 'should honor WhatIf even when Force is supplied' {
+            $env:PesterEnvVar = 'original value'
+            Set-EnvironmentVariable -Name 'PesterEnvVar' -Value 'modified value' -Force -WhatIf
+            $env:PesterEnvVar | Should -Be 'original value'
+            Should -Invoke Set-EnvironmentVariableValue -Times 0
+        }
         It 'should not set the variable is -WhatIf is passed' {
             $env:PesterEnvVar = 'original value'
             Set-EnvironmentVariable -Name 'PesterEnvVar' -Value 'modified value' -WhatIf
@@ -246,7 +264,7 @@ Describe 'Unit Tests' -Tag 'Unit' {
     }
 }
 
-Describe 'Integration Tests' -Tag 'Integration' {
+Describe 'Integration Tests' -Tag 'Integration', 'HostIntegration' {
     BeforeDiscovery {
         . $PSScriptRoot/../../src/Public/Test-IsAdmin.ps1
         $script:isAdmin = Test-IsAdmin
@@ -268,6 +286,7 @@ Describe 'Integration Tests' -Tag 'Integration' {
         . $PSScriptRoot/../../src/Public/Test-IsAdmin.ps1
         . $PSScriptRoot/../../src/Public/Get-EnvironmentVariable.ps1
         . $PSScriptRoot/../../src/Public/Test-PSEnvironment.ps1
+        . $PSScriptRoot/../../src/Private/Set-EnvironmentVariableValue.ps1
         . $PSScriptRoot/../../src/Public/Set-EnvironmentVariable.ps1
 
         <#
@@ -305,12 +324,11 @@ Describe 'Integration Tests' -Tag 'Integration' {
 
     It 'should output an object if PassThru is specified' {
         Clear-TestEnvVar
-        Set-EnvironmentVariable -Name PesterEnvVar -Value 'some value' -PassThru |
-            ForEach-Object -Process {
-                $_.Name | Should -Be 'PesterEnvVar'
-                $_.Value | Should -Be 'some value'
-                $_.Scope | Should -Be 'Process'
-            }
+        $result = @(Set-EnvironmentVariable -Name PesterEnvVar -Value 'some value' -PassThru)
+        $result.Count | Should -Be 1
+        $result[0].Name | Should -Be 'PesterEnvVar'
+        $result[0].Value | Should -Be 'some value'
+        $result[0].Scope | Should -Be 'Process'
     }
 
     It 'should append a value with -Append' {
@@ -352,7 +370,7 @@ Describe 'Integration Tests' -Tag 'Integration' {
     }
 
     Context 'scope isolation' {
-        It 'should only write to the scope that is specified: <Scope>' -TestCases $global:scopes {
+        It 'should only write to the scope that is specified: <Scope>' -TestCases $script:allScopes {
             param ($Scope)
             Clear-TestEnvVar
             Set-EnvironmentVariable -Name ScopeTest -Value "this is a $Scope value" -Scope $Scope
@@ -403,12 +421,11 @@ Describe 'Integration Tests' -Tag 'Integration' {
             $env:PATH | Should -Be $script:userPath
         }
         It "should return the original object even if it didn't overwrite the variable" {
-            Set-EnvironmentVariable -Name PATH -Value $script:userPath |
-                ForEach-Object -Process {
-                    $_.Name | Should -Not -BeNullOrEmpty
-                    $_.Value | Should -Not -BeNullOrEmpty
-                    $_.Scope | Should -Not -BeNullOrEmpty
-                }
+            $result = @(Set-EnvironmentVariable -Name PATH -Value $Script:userPath -PassThru)
+            $result.Count | Should -Be 1
+            $result[0].Name | Should -Be 'PATH'
+            $result[0].Value | Should -Be $Script:userPath
+            $result[0].Scope | Should -Be 'Process'
         }
     }
 
@@ -437,8 +454,10 @@ Describe 'Integration Tests' -Tag 'Integration' {
         }
 
         AfterAll {
-            foreach ($scope in $script:allScopes) {
-                Set-EnvironmentVariable -Name ($Scope + '_' + $script:newGuid) -Delete
+            foreach ($scope in $script:allScopes.Scope) {
+                $varName = ($scope + '_' + $script:newGuid)
+                Set-EnvironmentVariable -Name $varName -Scope $scope -Delete
+                Remove-Item -LiteralPath "env:$varName" -ErrorAction SilentlyContinue
             }
         }
     }

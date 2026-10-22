@@ -1,5 +1,6 @@
-Describe 'Integration Tests' -Tag 'Integration' {
+Describe 'Integration Tests' -Tag 'Integration', 'HostIntegration' {
     BeforeAll {
+        . $PSScriptRoot/../../src/Private/Set-EnvironmentVariableValue.ps1
         . $PSScriptRoot/../../src/Public/Set-EnvironmentVariable.ps1
         . $PSScriptRoot/../../src/Public/Add-AzPipelinesPathEntry.ps1
         . $PSScriptRoot/../../src/Public/Get-EnvironmentVariable.ps1

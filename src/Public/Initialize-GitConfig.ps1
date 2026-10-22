@@ -1,9 +1,9 @@
-﻿<#
+<#
 .SYNOPSIS
-Sets the git user name and email in a given scope.
+Sets Git identity and HTTP version in the requested repositories and scope.
 
 .DESCRIPTION
-Sets the git user name and email in a given scope.
+Sets Git identity and HTTP version in the requested repositories and scope.
 
 .PARAMETER Path
 Path of the repo.
@@ -36,45 +36,22 @@ function Initialize-GitConfig {
     )
 
     begin {
-        $script:CurrentLocation = $PWD
-        $script:Git = @{
-            FilePath    = Get-Command -Name git.exe | Select-Object -ExpandProperty Source
-            NoNewWindow = $true
-            Wait        = $true
+        $configuration = [ordered]@{
+            'http.version' = 'HTTP/1.1'
+            'user.email'   = $UserEmail
+            'user.name'    = $UserName
         }
-        $script:Config = @(
-            'config',
-            "--$($Scope.ToLower())"
-        )
+        $scopeArgument = "--$($Scope.ToLowerInvariant())"
     }
 
     process {
-        Start-Process @script:Git -ArgumentList ($script:Config + ('http.version', 'HTTP/1.1'))
-        $userEntries = @(
-            @{
-                ArgumentList = $script:Config + (
-                    '--replace-all',
-                    'user.email',
-                    "`"$UserEmail`""
-                )
-            },
-            @{
-                ArgumentList = $script:Config + (
-                    '--replace-all',
-                    'user.name',
-                    "`"$UserName`""
-                )
-            }
-        )
-
         foreach ($location in $Path) {
-            foreach ($user in $userEntries) {
-                Start-Process @script:Git @user -WorkingDirectory $location
+            foreach ($key in $configuration.Keys) {
+                Invoke-NativeCommand -FilePath 'git' `
+                    -ArgumentList @('config', $scopeArgument, '--replace-all', $key, $configuration[$key]) `
+                    -WorkingDirectory $location `
+                    -FailureMessage "Could not configure '$key' in '$location'."
             }
         }
-    }
-
-    end {
-        Set-Location -Path $script:CurrentLocation
     }
 }
