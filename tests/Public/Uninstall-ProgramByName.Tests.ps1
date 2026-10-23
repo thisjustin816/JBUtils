@@ -1,9 +1,9 @@
-Describe 'Integration Tests' -Tag 'Integration' -Skip:(!$global:isAdmin -or $null -ne $env:AGENT_JOBNAME) {
-    BeforeDiscovery {
-        . $PSScriptRoot/../../src/Public/Test-IsAdmin.ps1
-        $global:isAdmin = Test-IsAdmin
-        $null = $global:isAdmin # Workaround for PSScriptAnalyzer warning
-    }
+BeforeDiscovery {
+    . $PSScriptRoot/../../src/Public/Test-IsAdmin.ps1
+    $script:skipUninstall = -not (Test-IsAdmin) -or $null -ne $env:AGENT_JOBNAME
+}
+
+Describe 'Integration Tests' -Tag 'Integration', 'HostIntegration' -Skip:$script:skipUninstall {
 
     BeforeAll {
         . $PSScriptRoot/../../src/Public/Get-PSVersion.ps1

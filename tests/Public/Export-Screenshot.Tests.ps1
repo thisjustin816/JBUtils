@@ -1,4 +1,4 @@
-Describe 'Integration Tests' {
+Describe 'Integration Tests' -Tag 'Integration', 'HostIntegration' {
     BeforeAll {
         . $PSScriptRoot/../../src/Public/Export-Screenshot.ps1
     }

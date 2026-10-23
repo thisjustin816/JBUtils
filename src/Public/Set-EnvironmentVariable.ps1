@@ -66,8 +66,8 @@ function Set-EnvironmentVariable {
 
     process {
         if ($Delete) {
-            if ($PSCmdlet.ShouldProcess("$($Scope):$Name", 'Delete') -or $Force) {
-                [System.Environment]::SetEnvironmentVariable($Name, $null, $Scope)
+            if ($PSCmdlet.ShouldProcess("$($Scope):$Name", 'Delete')) {
+                Set-EnvironmentVariableValue -Name $Name -Value $null -Scope $Scope
                 Set-Item -Path "env:$Name" -Value $null -Force
             }
             return
@@ -117,8 +117,8 @@ function Set-EnvironmentVariable {
                 $valueWithPathSeparator
             }
 
-            if ($PSCmdlet.ShouldProcess("$($Scope):$Name", "Setting value to $finalValue") -or $Force) {
-                [System.Environment]::SetEnvironmentVariable($Name, $finalValue, $Scope)
+            if ($PSCmdlet.ShouldProcess("$($Scope):$Name", "Setting value to $finalValue")) {
+                Set-EnvironmentVariableValue -Name $Name -Value $finalValue -Scope $Scope
 
                 if ($Name -match 'path' -and $isArray) {
                     $scopedValue = (

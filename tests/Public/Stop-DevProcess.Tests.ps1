@@ -1,4 +1,4 @@
-Describe 'Integration Tests' {
+Describe 'Integration Tests' -Tag 'Integration', 'HostIntegration' {
     BeforeDiscovery {
         . $PSScriptRoot/../../src/Public/Test-IsAdmin.ps1
         $script:isAdmin = Test-IsAdmin
