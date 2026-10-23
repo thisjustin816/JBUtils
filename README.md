@@ -66,7 +66,9 @@ Install-Module -Name PSModuleUtils -MinimumVersion 5.0.0 -MaximumVersion 5.999.9
 ```
 
 The build analyzes the source, creates the versioned module under `out/JBUtils`, runs the full Pester suite,
-and verifies that the built module can be packaged for publication. Run the full suite only on a
+and verifies that the built module can be packaged for publication. GitHub Actions excludes
+`HostIntegration` tests because its runner has no interactive Windows desktop. The default local
+build still selects the full suite. Run the full suite only on a
 disposable Windows host: `HostIntegration` tests install software, modify persistent environment
 settings, capture the desktop, stop processes, or require an interactive Windows console. To build and run the remaining tests locally:
 

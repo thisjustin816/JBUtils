@@ -12,7 +12,11 @@ try {
         Invoke-PSModuleAnalyzer -Fix
     }
     $builtManifest = Build-PSModule
-    Test-PSModule -Name $builtManifest.BaseName
+    $testParameters = @{ Name = $builtManifest.BaseName }
+    if ($env:GITHUB_ACTIONS -eq 'true') {
+        $testParameters.ExcludeTag = 'HostIntegration'
+    }
+    Test-PSModule @testParameters
     $builtManifest
 }
 finally {
