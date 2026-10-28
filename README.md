@@ -42,6 +42,25 @@ depth and apply their own policy checks. The writer uses a temporary file in the
 directory before filesystem replacement. Validation or staging failures leave an existing
 destination unchanged. Temporary files are removed on success and failure.
 
+## OS credentials
+
+`Get-OsCredential`, `Set-OsCredential` and `Remove-OsCredential` use Git Credential Manager with
+Windows Credential Manager, macOS Keychain or Linux Secret Service. Install Git Credential Manager
+and unlock the user store before using these commands. Linux needs a desktop Secret Service session.
+An unavailable store raises an error; these commands never fall back to plaintext files.
+
+Use a stable name and application namespace to keep entries separate from Git credentials. The
+commands do not change Git configuration. Passwords travel through redirected stdin, not process
+arguments, and reads return a `PSCredential`. Reading a missing entry raises an error without starting
+an authentication flow. The plaintext protocol exists transiently in process memory.
+
+```powershell
+$credential = Get-Credential -UserName 'developer'
+Set-OsCredential -Name 'sample-token' -Namespace 'sample-app' -Credential $credential
+$credential = Get-OsCredential -Name 'sample-token' -Namespace 'sample-app' -UserName 'developer'
+Remove-OsCredential -Name 'sample-token' -Namespace 'sample-app' -UserName 'developer'
+```
+
 ## Development
 
 Follow the [PowerShell Best Practices and Style Guide](https://poshcode.gitbooks.io/powershell-practice-and-style/)
