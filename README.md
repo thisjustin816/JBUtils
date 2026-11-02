@@ -61,6 +61,27 @@ $credential = Get-OsCredential -Name 'sample-token' -Namespace 'sample-app' -Use
 Remove-OsCredential -Name 'sample-token' -Namespace 'sample-app' -UserName 'developer'
 ```
 
+## Native commands with child-only environment values
+
+Invoke-NativeCommand streams a command's output and throws on a nonzero exit code.
+Supply -Environment when a command needs temporary environment values:
+
+~~~powershell
+Invoke-NativeCommand -FilePath $executable -ArgumentList @('--version') -Environment @{
+    TOOL_SESSION = 'temporary-value'
+    UNUSED_SETTING = $null
+}
+~~~
+
+This mode uses a separate PowerShell job and sends overrides through its input channel.
+A null value removes the variable in the child. Other variables are inherited. The parent
+environment stays unchanged, including when commands run concurrently. Output and native stderr
+return through the pipeline; this mode cannot provide an interactive console. The caller
+must redact sensitive output before displaying or storing it. Overrides are never placed in
+native arguments or temporary files.
+
+Without -Environment, the existing inherited-console invocation remains in use.
+
 ## Development
 
 Follow the [PowerShell Best Practices and Style Guide](https://poshcode.gitbooks.io/powershell-practice-and-style/)
