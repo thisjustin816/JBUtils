@@ -17,7 +17,7 @@ Use Start-CliProcess for progress reporting or separate stderr handling.
 Native executable or script to invoke. PATH-resolved names are accepted.
 
 .PARAMETER ArgumentList
-Arguments passed to the native command.
+Arguments passed literally to the native command, including wildcard characters.
 
 .PARAMETER FailureMessage
 Message included in the terminating error. The exit code is appended. Defaults to a generic
@@ -60,6 +60,15 @@ function Invoke-NativeCommand {
         [System.Collections.IDictionary]$Environment
     )
 
+    # Quoted argument expressions prevent Unix wildcard expansion without interpolating argument data into code.
+    $argumentExpressions = for ($index = 0; $index -lt $ArgumentList.Count; $index++) {
+        ('"$($NativeArguments[' + $index + '])"')
+    }
+    $invocationText = (
+        'param($NativeExecutable, $NativeArguments) & $NativeExecutable ' +
+        ($argumentExpressions -join ' ')
+    )
+
     if ($PSBoundParameters.ContainsKey('Environment')) {
         foreach ($entry in $Environment.GetEnumerator()) {
             if ($entry.Key -isnot [String] -or $entry.Key -notmatch '\A[^=\x00]+\z' -or
@@ -73,16 +82,16 @@ function Invoke-NativeCommand {
         $directory = if ($WorkingDirectory) { $WorkingDirectory } else { (Get-Location).Path }
         $directory = (Resolve-Path -LiteralPath $directory -ErrorAction Stop).ProviderPath
         $job = Start-Job -ScriptBlock {
-            param($Executable, $Arguments, $Directory, $Overrides, $Message)
+            param($Executable, $Arguments, $Directory, $Overrides, $Message, $InvocationText)
             foreach ($entry in $Overrides.GetEnumerator()) {
                 [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
             }
             Set-Location -LiteralPath $Directory -ErrorAction Stop
-            & $Executable @Arguments 2>&1
+            & ([ScriptBlock]::Create($InvocationText)) $Executable $Arguments 2>&1
             if ($LASTEXITCODE -ne 0) {
                 throw "$Message Exit code: $LASTEXITCODE"
             }
-        } -ArgumentList $command.Source, $ArgumentList, $directory, $Environment, $FailureMessage
+        } -ArgumentList $command.Source, $ArgumentList, $directory, $Environment, $FailureMessage, $invocationText
         try {
             Receive-Job -Job $job -Wait -ErrorAction Stop
         }
@@ -97,7 +106,7 @@ function Invoke-NativeCommand {
     }
 
     try {
-        & $FilePath @ArgumentList
+        & ([ScriptBlock]::Create($invocationText)) $FilePath $ArgumentList
         if ($LASTEXITCODE -ne 0) {
             throw "$FailureMessage Exit code: $LASTEXITCODE"
         }

@@ -64,6 +64,7 @@ Remove-OsCredential -Name 'sample-token' -Namespace 'sample-app' -UserName 'deve
 ## Native commands with child-only environment values
 
 Invoke-NativeCommand streams a command's output and throws on a nonzero exit code.
+ArgumentList preserves literal wildcard characters, spaces, quotes and empty arguments.
 Supply -Environment when a command needs temporary environment values:
 
 ~~~powershell
