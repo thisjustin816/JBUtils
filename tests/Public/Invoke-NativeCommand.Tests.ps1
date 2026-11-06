@@ -206,3 +206,32 @@ Describe 'Child environment invocation boundaries' -Tag 'Unit' {
         $env:JBUTILS_WRAPPER_TEST | Should -BeNullOrEmpty
     }
 }
+
+Describe 'Literal native arguments' -Tag 'Unit' {
+    BeforeAll {
+        . $PSScriptRoot/../../src/Public/Invoke-NativeCommand.ps1
+        $Script:PwshPath = (Get-Command pwsh -CommandType Application | Select-Object -First 1).Source
+    }
+
+    It 'preserves wildcard argument data with child isolation <Isolated>' -ForEach @(
+        @{ Isolated = $false }
+        @{ Isolated = $true }
+    ) {
+        $directory = Join-Path $TestDrive "literal-$Isolated"
+        $null = New-Item -ItemType Directory -Path $directory
+        Set-Content -LiteralPath (Join-Path $directory 'matching.txt') -Value 'fixture'
+        $probe = Join-Path $TestDrive "arguments-$Isolated.ps1"
+        Set-Content -LiteralPath $probe -Value '$args | ConvertTo-Json -Compress'
+        $expected = @('*', '*.txt', 'spaces "quotes" $(throw 1)', '')
+        $parameters = @{
+            FilePath         = $Script:PwshPath
+            ArgumentList     = @('-NoProfile', '-File', $probe) + $expected
+            WorkingDirectory = $directory
+        }
+        if ($Isolated) { $parameters.Environment = @{} }
+
+        $actual = Invoke-NativeCommand @parameters | ConvertFrom-Json
+
+        $actual | Should -Be $expected
+    }
+}

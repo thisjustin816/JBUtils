@@ -1,6 +1,6 @@
 @{
     RootModule           = 'JBUtils.psm1'
-    ModuleVersion        = '1.10.0'
+    ModuleVersion        = '1.10.1'
     GUID                 = 'de33eef4-1434-4420-a7f4-40fb4a6e7ee6'
     Author               = ''
     CompanyName          = ''
@@ -18,7 +18,7 @@
     RequiredModules      = @()
     PrivateData          = @{
         PSData = @{
-            ReleaseNotes = 'Add child-only environment overrides to Invoke-NativeCommand.'
+            ReleaseNotes = 'Preserve literal wildcard arguments in direct and isolated native commands.'
             LicenseUri   = 'https://opensource.org/licenses/MIT'
             ProjectUri   = ''
             Prerelease   = ''
