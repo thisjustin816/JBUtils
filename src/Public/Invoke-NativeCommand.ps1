@@ -84,7 +84,12 @@ function Invoke-NativeCommand {
         $job = Start-Job -ScriptBlock {
             param($Executable, $Arguments, $Directory, $Overrides, $Message, $InvocationText)
             foreach ($entry in $Overrides.GetEnumerator()) {
-                [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
+                if ($null -eq $entry.Value) {
+                    [Environment]::SetEnvironmentVariable($entry.Key, [NullString]::Value, 'Process')
+                }
+                else {
+                    [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
+                }
             }
             Set-Location -LiteralPath $Directory -ErrorAction Stop
             & ([ScriptBlock]::Create($InvocationText)) $Executable $Arguments 2>&1

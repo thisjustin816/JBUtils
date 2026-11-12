@@ -98,10 +98,19 @@ Describe 'Isolated native command environments' -Tag 'Unit' {
 
     It 'removes a child variable without changing the parent' {
         $output = Invoke-NativeCommand -FilePath $script:PwshPath -ArgumentList @(
-            '-NoProfile', '-Command', '[String]::IsNullOrEmpty($env:JBUTILS_NATIVE_TEST)'
+            '-NoProfile', '-Command', 'Test-Path Env:JBUTILS_NATIVE_TEST'
         ) -Environment @{ JBUTILS_NATIVE_TEST = $null }
 
-        $output | Should -Be 'True'
+        $output | Should -Be 'False'
+        $env:JBUTILS_NATIVE_TEST | Should -Be 'parent-value'
+    }
+
+    It 'preserves an explicitly empty child variable' -Skip:($PSVersionTable.PSVersion -lt [Version]'7.5') {
+        $output = Invoke-NativeCommand -FilePath $script:PwshPath -ArgumentList @(
+            '-NoProfile', '-Command', 'Test-Path Env:JBUTILS_NATIVE_TEST; $env:JBUTILS_NATIVE_TEST.Length'
+        ) -Environment @{ JBUTILS_NATIVE_TEST = '' }
+
+        $output | Should -Be @('True', '0')
         $env:JBUTILS_NATIVE_TEST | Should -Be 'parent-value'
     }
 
