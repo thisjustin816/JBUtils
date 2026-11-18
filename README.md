@@ -83,6 +83,21 @@ native arguments or temporary files.
 
 Without -Environment, the existing inherited-console invocation remains in use.
 
+## Private native protocol exchange
+
+`Invoke-NativeProtocol` requires PowerShell 7 and returns captured UTF-8 stdout to its caller.
+Supply a complete `Environment` dictionary and private `InputText`; parent variables are not inherited.
+Capture and validate the returned string before displaying or storing anything. The helper does not
+interpret or sanitize protocol records.
+
+The exchange limits stdin to 8 MiB, stdout to 16 KiB, stderr to 64 KiB and communication to 30 seconds
+by default. Parameters can set smaller limits. Unexpected stderr, invalid UTF-8, overflow, cancellation,
+failed startup and nonzero exit produce fixed failure categories without native data. Timeout and
+cancellation terminate the child and its attached process tree. Detached descendants or descendants that
+outlive their parent are outside this cleanup guarantee. Use a non-detaching executable; this helper
+does not provide process containment. Input travels through stdin, never temporary files or shell arguments.
+Existing credential-store helpers preserve their inherited environment and accepted output behavior.
+
 ## Development
 
 Follow the [PowerShell Best Practices and Style Guide](https://poshcode.gitbooks.io/powershell-practice-and-style/)
