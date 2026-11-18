@@ -81,7 +81,26 @@ return through the pipeline; this mode cannot provide an interactive console. Th
 must redact sensitive output before displaying or storing it. Overrides are never placed in
 native arguments or temporary files.
 
-Without -Environment, the existing inherited-console invocation remains in use.
+For a complete environment on PowerShell 7, use `-ExactEnvironment`:
+
+~~~powershell
+Invoke-NativeCommand -FilePath $executable -ArgumentList @('--run') -ExactEnvironment @{
+    PATH = $env:PATH
+    TOOL_SESSION = 'temporary-value'
+} -InputText $startupRequest
+~~~
+
+Only supplied variables reach the executable. Null values are absent; empty strings remain present.
+Private startup input is strict UTF-8, limited to 8 MiB by default, and sent once through stdin.
+Output and stderr stream as text chunks, including output without newlines. This mode has no total
+runtime deadline or cumulative output limit; a bounded queue applies backpressure. It does not
+provide an interactive console or a private protocol response. Redact sensitive application logging
+before displaying or storing it, accounting for values split across chunks. The input and environment
+are never included in reported failures.
+Cancellation and pipeline stop terminate the process and its attached descendants; detached or
+reparented processes require external containment. `Environment` and `ExactEnvironment` cannot be combined.
+
+Without either environment parameter, the inherited-console invocation remains in use.
 
 ## Private native protocol exchange
 
