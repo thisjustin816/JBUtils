@@ -13,6 +13,7 @@ function Invoke-ProcessExchange {
         [Int32]$MaxOutputBytes = [Int32]::MaxValue,
         [Int32]$MaxErrorBytes = [Int32]::MaxValue,
         [Switch]$StrictProtocol,
+        [Switch]$Streaming,
         [Threading.CancellationToken]$CancellationToken = [Threading.CancellationToken]::None
     )
 
@@ -20,6 +21,7 @@ function Invoke-ProcessExchange {
     $definition = @'
 using System;
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -102,19 +104,21 @@ namespace JBUtils.ProcessProtocol
                 TaskContinuationOptions.OnlyOnFaulted);
         }
 
-        public static string Run(ProcessStartInfo start, string inputText, int timeout, int inputMaximum,
-            int outputMaximum, int errorMaximum, bool strict, CancellationToken cancellation)
+        internal sealed class Session : IDisposable
         {
-            byte[] input = null;
-            byte[] output = null;
-            byte[] error = null;
-            Task write = null;
-            Task<byte[]> stdout = null;
-            Task<byte[]> stderr = null;
-            bool started = false;
-            using (Process process = new Process())
-            using (CancellationTokenSource stop = new CancellationTokenSource())
+            internal readonly Process Process = new Process();
+            internal readonly CancellationTokenSource Stop = new CancellationTokenSource();
+            internal readonly Stopwatch Timer = new Stopwatch();
+            internal Task Write;
+            private byte[] input;
+            private readonly bool tree;
+            private bool started;
+            private bool disposed;
+
+            internal Session(ProcessStartInfo start, string inputText, int inputMaximum, bool strict,
+                CancellationToken cancellation)
             {
+                tree = strict;
                 try
                 {
                     Encoding encoding = strict ? new UTF8Encoding(false, true) : Encoding.UTF8;
@@ -131,31 +135,150 @@ namespace JBUtils.ProcessProtocol
                     start.RedirectStandardInput = true;
                     start.RedirectStandardOutput = true;
                     start.RedirectStandardError = true;
-                    process.StartInfo = start;
-                    Stopwatch timer = Stopwatch.StartNew();
-                    try { started = process.Start(); }
+                    Process.StartInfo = start;
+                    Timer.Start();
+                    try { started = Process.Start(); }
                     catch { throw new ExchangeFailure("StartFailed"); }
                     if (!started) throw new ExchangeFailure("StartFailed");
-                    stdout = ReadAsync(process.StandardOutput.BaseStream, outputMaximum,
-                        "OutputLimitExceeded", stop.Token);
-                    stderr = ReadAsync(process.StandardError.BaseStream, errorMaximum,
-                        "ErrorLimitExceeded", stop.Token);
-                    write = WriteAsync(process, input, stop.Token);
-                    while (!process.HasExited || !write.IsCompleted || !stdout.IsCompleted || !stderr.IsCompleted)
+                }
+                catch { Dispose(); throw; }
+            }
+
+            internal void StartInput() { Write = WriteAsync(Process, input, Stop.Token); }
+
+            public void Dispose()
+            {
+                if (disposed) return;
+                disposed = true;
+                Stop.Cancel();
+                if (started) Kill(Process, tree);
+                Process.Dispose();
+                Observe(Write);
+                if (input != null) Array.Clear(input, 0, input.Length);
+                Stop.Dispose();
+            }
+        }
+
+        public sealed class RunningExchange : IDisposable
+        {
+            private readonly Session session;
+            private readonly CancellationToken cancellation;
+            private readonly BlockingCollection<string> chunks = new BlockingCollection<string>(32);
+            private readonly Task stdout;
+            private readonly Task stderr;
+            private bool disposed;
+
+            internal RunningExchange(Session session, CancellationToken cancellation)
+            {
+                this.session = session;
+                this.cancellation = cancellation;
+                stdout = Task.Run(() => PumpAsync(session.Process.StandardOutput.BaseStream));
+                stderr = Task.Run(() => PumpAsync(session.Process.StandardError.BaseStream));
+                session.StartInput();
+            }
+
+            private async Task PumpAsync(Stream stream)
+            {
+                char[] buffer = new char[2048];
+                using (StreamReader reader = new StreamReader(stream, new UTF8Encoding(false), false, 4096))
+                {
+                    try
+                    {
+                        int count;
+                        while ((count = await reader.ReadAsync(buffer, 0, buffer.Length)
+                            .ConfigureAwait(false)) != 0)
+                            chunks.Add(new string(buffer, 0, count), session.Stop.Token);
+                    }
+                    finally { Array.Clear(buffer, 0, buffer.Length); }
+                }
+            }
+
+            public bool TryRead(out string chunk)
+            {
+                Check();
+                return chunks.TryTake(out chunk);
+            }
+
+            public bool IsCompleted
+            {
+                get
+                {
+                    Check();
+                    return session.Process.HasExited && session.Write.IsCompleted && stdout.IsCompleted &&
+                        stderr.IsCompleted && chunks.Count == 0;
+                }
+            }
+
+            private void Check()
+            {
+                if (cancellation.IsCancellationRequested) throw new ExchangeFailure("Cancelled");
+                CheckFailure(stdout, "ReadFailed");
+                CheckFailure(stderr, "ReadFailed");
+                CheckFailure(session.Write, "WriteFailed");
+            }
+
+            public int Complete()
+            {
+                if (!IsCompleted) throw new ExchangeFailure("ExchangeIncomplete");
+                return session.Process.ExitCode;
+            }
+
+            public void Dispose()
+            {
+                if (disposed) return;
+                disposed = true;
+                session.Dispose();
+                Observe(stdout);
+                Observe(stderr);
+                string chunk;
+                while (chunks.TryTake(out chunk)) { }
+                Task.WhenAll(stdout, stderr).ContinueWith(t => {
+                    var observed = t.Exception;
+                    chunks.Dispose();
+                });
+            }
+        }
+
+        public static RunningExchange StartStreaming(ProcessStartInfo start, string inputText,
+            int inputMaximum, CancellationToken cancellation)
+        {
+            Session session = new Session(start, inputText, inputMaximum, true, cancellation);
+            try { return new RunningExchange(session, cancellation); }
+            catch { session.Dispose(); throw; }
+        }
+
+        public static string Run(ProcessStartInfo start, string inputText, int timeout, int inputMaximum,
+            int outputMaximum, int errorMaximum, bool strict, CancellationToken cancellation)
+        {
+            byte[] output = null;
+            byte[] error = null;
+            Task<byte[]> stdout = null;
+            Task<byte[]> stderr = null;
+            using (Session session = new Session(start, inputText, inputMaximum, strict, cancellation))
+            {
+                try
+                {
+                    stdout = ReadAsync(session.Process.StandardOutput.BaseStream, outputMaximum,
+                        "OutputLimitExceeded", session.Stop.Token);
+                    stderr = ReadAsync(session.Process.StandardError.BaseStream, errorMaximum,
+                        "ErrorLimitExceeded", session.Stop.Token);
+                    session.StartInput();
+                    while (!session.Process.HasExited || !session.Write.IsCompleted ||
+                        !stdout.IsCompleted || !stderr.IsCompleted)
                     {
                         CheckFailure(stdout, "ReadFailed");
                         CheckFailure(stderr, "ReadFailed");
-                        CheckFailure(write, "WriteFailed");
+                        CheckFailure(session.Write, "WriteFailed");
                         if (cancellation.IsCancellationRequested) throw new ExchangeFailure("Cancelled");
-                        if (timer.ElapsedMilliseconds >= timeout) throw new ExchangeFailure("TimedOut");
+                        if (session.Timer.ElapsedMilliseconds >= timeout) throw new ExchangeFailure("TimedOut");
                         Thread.Sleep(10);
                     }
                     CheckFailure(stdout, "ReadFailed");
                     CheckFailure(stderr, "ReadFailed");
-                    CheckFailure(write, "WriteFailed");
+                    CheckFailure(session.Write, "WriteFailed");
                     output = stdout.GetAwaiter().GetResult();
                     error = stderr.GetAwaiter().GetResult();
-                    if (process.ExitCode != 0) throw new ExchangeFailure("ExitFailed");
+                    if (session.Process.ExitCode != 0) throw new ExchangeFailure("ExitFailed");
                     if (strict && error.Length != 0) throw new ExchangeFailure("UnexpectedErrorOutput");
                     if (strict)
                     {
@@ -169,13 +292,9 @@ namespace JBUtils.ProcessProtocol
                 catch { throw new ExchangeFailure("ExchangeFailed"); }
                 finally
                 {
-                    stop.Cancel();
-                    if (started) Kill(process, strict);
-                    process.Dispose();
-                    Observe(write);
+                    session.Dispose();
                     Observe(stdout);
                     Observe(stderr);
-                    if (input != null) Array.Clear(input, 0, input.Length);
                     if (output != null) Array.Clear(output, 0, output.Length);
                     if (error != null) Array.Clear(error, 0, error.Length);
                 }
@@ -198,8 +317,26 @@ namespace JBUtils.ProcessProtocol
         $exchangeType = $typeName -as [Type]
     }
 
-    $exchangeType::Run(
-        $StartInfo, $InputText, $TimeoutMilliseconds, $MaxInputBytes,
-        $MaxOutputBytes, $MaxErrorBytes, $StrictProtocol.IsPresent, $CancellationToken
-    )
+    if ($Streaming) {
+        $exchange = $null
+        try {
+            $exchange = $exchangeType::StartStreaming($StartInfo, $InputText, $MaxInputBytes, $CancellationToken)
+            while (-not $exchange.IsCompleted) {
+                $chunk = $null
+                while ($exchange.TryRead([ref]$chunk)) { $chunk }
+                Start-Sleep -Milliseconds 10
+            }
+            $exitCode = $exchange.Complete()
+            if ($exitCode -ne 0) { throw "ExitCode:$exitCode" }
+        }
+        finally {
+            if ($exchange) { $exchange.Dispose() }
+        }
+    }
+    else {
+        $exchangeType::Run(
+            $StartInfo, $InputText, $TimeoutMilliseconds, $MaxInputBytes,
+            $MaxOutputBytes, $MaxErrorBytes, $StrictProtocol.IsPresent, $CancellationToken
+        )
+    }
 }
