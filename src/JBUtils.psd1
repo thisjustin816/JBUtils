@@ -1,6 +1,6 @@
 @{
     RootModule           = 'JBUtils.psm1'
-    ModuleVersion        = '1.10.2'
+    ModuleVersion        = '1.11.0'
     GUID                 = 'de33eef4-1434-4420-a7f4-40fb4a6e7ee6'
     Author               = ''
     CompanyName          = ''
@@ -18,7 +18,7 @@
     RequiredModules      = @()
     PrivateData          = @{
         PSData = @{
-            ReleaseNotes = 'Remove child variables for null overrides and preserve explicit empty values.'
+            ReleaseNotes = 'Add bounded private native process exchange with a complete child environment.'
             LicenseUri   = 'https://opensource.org/licenses/MIT'
             ProjectUri   = ''
             Prerelease   = ''

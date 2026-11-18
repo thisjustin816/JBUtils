@@ -106,8 +106,27 @@ Describe 'OS credential store' -Tag 'Unit' {
 
 Describe 'Credential subprocess isolation' -Tag 'Unit' {
     BeforeAll {
+        . $PSScriptRoot/../../src/Private/Invoke-ProcessExchange.ps1
         . $PSScriptRoot/../../src/Private/Invoke-OsCredentialProtocol.ps1
         $Script:PwshPath = (Get-Command pwsh -ErrorAction Stop).Source
+    }
+
+    It 'preserves inherited environment BOM decoding large stdout and accepted stderr' {
+        $prior = $env:JBUTILS_LEGACY_CANARY
+        try {
+            $env:JBUTILS_LEGACY_CANARY = 'inherited-synthetic-value'
+            $code = @'
+[Console]::Error.Write('accepted diagnostic')
+$bytes = [Text.Encoding]::UTF8.GetBytes(([String][Char]0xFEFF) + $env:JBUTILS_LEGACY_CANARY + ('x' * 32768))
+[Console]::OpenStandardOutput().Write($bytes, 0, $bytes.Length)
+'@
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($code))
+            $arguments = "-NoProfile -NonInteractive -EncodedCommand $encoded"
+            $start = [Diagnostics.ProcessStartInfo]::new($PwshPath, $arguments)
+            $result = Invoke-OsCredentialProtocol -StartInfo $start -InputText 'request'
+            $result | Should -BeExactly ('inherited-synthetic-value' + ('x' * 32768))
+        }
+        finally { $env:JBUTILS_LEGACY_CANARY = $prior }
     }
 
     It 'captures stdout privately and passes stdin without command-line interpolation' {
